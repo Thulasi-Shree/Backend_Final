@@ -16,18 +16,11 @@ const morgan = require('morgan');
 
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  res.header('Access-Control-Allow-Headers', '*');
   next();
 });
 
-const corsOptions = {
-  origin: ['http://localhost:8000','http://127.0.0.1:3000','http://localhost:3001', 'http://127.0.0.1:3001'] ,
-  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-  credentials: true,
-  optionsSuccessStatus: 200,
-};
-
-app.use(cors(corsOptions));
+app.use(cors());
 
 const auth = require('./routes/auth')
 const admin = require('./routes/admin')
@@ -64,7 +57,7 @@ app.use(morgan('combined'));
  
 
   app.use((req, res, next) => {
-    res.setHeader('Content-Security-Policy', "img-src 'self' data: http://localhost:8000 http://127.0.0.1:8000");
+    res.setHeader('Content-Security-Policy', '*');
     next();
   });
   

@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const autopopulate = require('mongoose-autopopulate');
 const uniqueValidator = require('mongoose-unique-validator');
+const CryptoJS = require('crypto-js');
 
 const userSchema = new mongoose.Schema({
     name: {
@@ -104,11 +105,6 @@ userSchema.methods.generateHashedOtp = async function (otp) {
     return await bcrypt.hash(otp, 10);
 };
 
-
-
-
-
-
 userSchema.pre('save', async function (next) {
     try {
         if (!this.isModified('password')) {
@@ -131,13 +127,27 @@ userSchema.methods.getJwtToken = function () {
     }
 };
 
-userSchema.methods.isValidPassword = async function (reqPassword) {
+
+// userSchema.methods.isValidPassword = async function (reqPassword) {
+//     try {
+//         return await bcrypt.compare(reqPassword, this.password);
+//     } catch (error) {
+//         throw new Error('Password comparison failed');
+//     }
+// };
+
+userSchema.methods.isValidPassword = async function(reqPassword) {
     try {
-        return await bcrypt.compare(reqPassword, this.password);
+      // Decrypt the stored password first
+      const bytes = CryptoJS.AES.decrypt(reqPassword, 'ghjdjdgdhddjjdhgdcdghww#hsh536');
+    const decryptedPassword = bytes.toString(CryptoJS.enc.Utf8);
+
+    // Compare the decrypted password with the stored (hashed) password using bcrypt
+    return await bcrypt.compare(decryptedPassword, this.password);
     } catch (error) {
-        throw new Error('Password comparison failed');
+      throw new Error('Password comparison failed');
     }
-};
+  };
 
 userSchema.methods.getUserPassword = function () {
     try {

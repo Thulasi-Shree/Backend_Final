@@ -4,7 +4,17 @@ const sendToken = require('../../utils/jwt');
 const ErrorHandler = require('../../utils/errorHandler');
 const { sendEmail } = require('../../utils/email');
 const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
+const CryptoJS = require('crypto-js');
 
+// Function to compare OTP
+const compareOtp = (hashedOtp, otp) => {
+  return bcrypt.compareSync(otp, hashedOtp);
+};
+
+const generateHashedOTP = (otp) => {
+    return bcrypt.hashSync(otp, 10);
+};
 
 exports.loginUser = catchAsyncError(async (req, res, next) => {
     try {
@@ -17,10 +27,13 @@ exports.loginUser = catchAsyncError(async (req, res, next) => {
         let user;
 
         if (otp) {
-            const hashedOTP = generateHashedOTP(otp);
-            user = await User.findOne({ email, loginOtp: hashedOTP });
+            // Decrypt the OTP
+            const bytes = CryptoJS.AES.decrypt(otp, 'ghjdjdgdhddjjdhgdcdghww#hsh536');
+            const decryptedOtp = bytes.toString(CryptoJS.enc.Utf8);
 
-            if (!user) {
+            user = await User.findOne({ email });
+
+            if (!user || !compareOtp(user.loginOtp, decryptedOtp)) {
                 throw new ErrorHandler('Invalid OTP', 401);
             }
 
@@ -36,6 +49,7 @@ exports.loginUser = catchAsyncError(async (req, res, next) => {
         } else {
             throw new ErrorHandler('Please provide OTP or password', 400);
         }
+
         if (!user.emailVerificationStatus) {
             throw new ErrorHandler('Email is not verified', 401);
         }
@@ -44,15 +58,11 @@ exports.loginUser = catchAsyncError(async (req, res, next) => {
     } catch (error) {
         if (error instanceof ErrorHandler) {
             res.status(error.statusCode).json({ message: error.message });
-          } else {
+        } else {
             res.status(500).json({ message: 'Internal Server Error' });
-          }
+        }
     }
 });
-
-const generateHashedOTP = (otp) => {
-    return crypto.createHash('sha256').update(otp).digest('hex');
-};
 
 exports.sendUserOtp = catchAsyncError(async (req, res, next) => {
     try {
@@ -70,21 +80,12 @@ exports.sendUserOtp = catchAsyncError(async (req, res, next) => {
             }
             return OTP;
         };
-        
-        const generateHashedOTP1 = (otp) => {
-            return crypto.createHash('sha256').update(otp).digest('hex');
-        };
-        
+
         const plainOTP = generateOTP(6); 
-        const hashedOTP = generateHashedOTP1(plainOTP); 
-        
-      
+        const hashedOTP = generateHashedOTP(plainOTP); 
 
         const user = await User.findOneAndUpdate({ email }, { loginOtp: hashedOTP }, { new: true });
 
-
-        user.loginOtp = hashedOTP;
-        user.save();
         if (!user) {
             throw new ErrorHandler('Invalid email', 401);
         }
@@ -103,9 +104,9 @@ exports.sendUserOtp = catchAsyncError(async (req, res, next) => {
         });
     } catch (error) {
         next(new ErrorHandler('Internal Server Error', 500));
-        
     }
 });
+
 exports.getUserProfile = catchAsyncError(async (req, res, next) => {
     try {
       const user = await User.findById(req.user.id);
@@ -122,12 +123,6 @@ exports.getUserProfile = catchAsyncError(async (req, res, next) => {
         user,
       });
     } catch (error) {
-      console.error('Error fetching user profile:', error);
       next(new ErrorHandler('Error fetching user profile', 500));
-  
-      res.status(500).json({
-        success: false,
-        message: 'Internal Server Error',
-      });
     }
-  });
+});
