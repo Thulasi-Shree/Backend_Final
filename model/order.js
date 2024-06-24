@@ -1,6 +1,12 @@
 const mongoose = require('mongoose');
 
 const orderSchema = mongoose.Schema({
+    orderId: {
+        type: String,
+        unique: true,
+        required: true
+
+    },
     shipping: {
         name: String,
         email: String,
